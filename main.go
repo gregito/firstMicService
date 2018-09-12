@@ -1,14 +1,14 @@
 package main
 
 import (
+	"firstMicS/homepage"
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"firstMicS/server"
 )
-
-const helloMessage = "Welcome"
 
 var (
 	CertFile       = os.Getenv("SERVER_CERT_FILE")
@@ -17,16 +17,25 @@ var (
 )
 
 func main() {
+	logger := log.New(os.Stdout, getTimeStamp(), log.LstdFlags|log.Lshortfile)
+
+	h := homepage.NewHandlers(logger)
+
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
-		writer.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		writer.WriteHeader(http.StatusOK)
-		writer.Write([]byte(helloMessage))
-	})
+	h.SetupRoutes(mux)
 
 	srv := server.New(server.NewTlsConfig(), mux, ServiceAddress)
 
+	logger.Println("Server starting...")
 	if err := srv.ListenAndServeTLS(CertFile, KeyFile); err != nil {
-		log.Fatalf("server failed to start <%v>", err)
+		logger.Fatalf("server failed to start <%v>", err)
 	}
+}
+
+func getTimeStamp() string {
+	return time.Unix(unixMilli(time.Now())/1e3, (unixMilli(time.Now())%1e3)*int64(time.Millisecond)/int64(time.Nanosecond)).String()
+}
+
+func unixMilli(t time.Time) int64 {
+	return t.Round(time.Millisecond).UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond))
 }
